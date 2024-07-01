@@ -1,0 +1,83 @@
+name: 🚀 DS Pull Request and Pushes
+run-name:  ${{ github.event_name }} from @${{ github.actor }} on ${{ github.Ref }}
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [3.11]
+
+    steps:
+      #----------------------------------------------
+      #       check-out repo and set-up python
+      #----------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python ${{ matrix.python-version }}
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      #----------------------------------------------
+      #  -----  install & configure poetry  -----
+      #----------------------------------------------
+      - name: ⬇️ Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true # false?
+          virtualenvs-in-project: true
+          installer-parallel: true
+
+      #----------------------------------------------
+      #       load cached venv if cache exists
+      #----------------------------------------------
+      - name: 📄 Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/pyproject.toml', '**/poetry.lock') }}
+
+      #----------------------------------------------
+      # install dependencies if cache does not exist
+      #----------------------------------------------
+      - name: ⬇️ Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-ansi --no-root
+
+      #----------------------------------------------
+      #              run test suite
+      #----------------------------------------------
+      - name: 🧪 Run Pytests
+        run: |
+          source .venv/bin/activate
+          poetry run pytest --cov=. --cov-report=term tests
+
+      - name: 🙏 Run mypy
+        run: |
+          source .venv/bin/activate
+          poetry run mypy . --ignore-missing-imports
+
+      #----------------------------------------------
+      #              save code coverage results (Codacy)
+      #----------------------------------------------
+      # - name: 📄 Save code coverage results (report)
+      #   uses: codacy/codacy-coverage-reporter-action@v1.3.0
+      #   with:
+      #     project-token: ${{secrets.CODACY_API_KEY}}
+      #     coverage-reports: "./coverage/**/coverage.cobertura.xml"
