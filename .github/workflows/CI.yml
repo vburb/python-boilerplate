@@ -1,4 +1,4 @@
-name: 🚀 DS Pull Request and Pushes
+name: 🚀 Github Workflows Pull Request and Pushes
 run-name:  ${{ github.event_name }} from @${{ github.actor }} on ${{ github.Ref }}
 
 on:
